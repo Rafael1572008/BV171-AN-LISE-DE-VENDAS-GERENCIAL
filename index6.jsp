@@ -1,0 +1,177 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isELIgnored="false" %>
+    <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+    <%@ page import="java.util.*" %>
+        <%@ taglib uri="http://java.sun.com/jstl/core_rt" prefix="c" %>
+            <%@ taglib prefix="snk" uri="/WEB-INF/tld/sankhyaUtil.tld" %>
+
+                <html lang="pt-BR">
+
+                <head>
+                    <snk:load />
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>BV171 · Canal, Região & Top Parceiros</title>
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link
+                        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+                        rel="stylesheet">
+                    <link rel="stylesheet" href="${BASE_FOLDER}/css3/styles.css">
+                <link rel="stylesheet" href="${BASE_FOLDER}/lib/sales-kpis.css">
+<link rel="stylesheet" href="${BASE_FOLDER}/lib/dashboard-filters.css">
+                </head>
+
+                <body>
+                    <div class="wrap">
+                        <header class="header header-centered">
+                            <div class="brand">
+                                <div class="brand-mark">BV</div>
+                                <div>
+                                    <div class="brand-name">Bela Vista</div>
+                                    <div class="brand-sub">Business Intelligence</div>
+                                </div>
+                            </div>
+                            <div class="header-center">
+                                <nav class="breadcrumb" aria-label="Navegação">
+                                    <span class="breadcrumb-item">Visão geral</span>
+                                    <span class="breadcrumb-separator">&#8250;</span>
+                                    <span class="breadcrumb-item" id="breadcrumb-uf"></span>
+                                    <span class="breadcrumb-separator">&#8250;</span>
+                                    <span class="breadcrumb-item active" id="breadcrumb-canal"></span>
+                                </nav>
+                                <h1>BV171 ANÁLISE DE VENDAS GERENCIAL</h1>
+                                <div class="header-period">
+                                    <span class="hp-item analise"><span class="hp-label">Análise</span><span
+                                            class="hp-value" id="header-periodo"></span></span>
+                                    <span class="hp-item referencia"><span class="hp-label">Referência</span><span
+                                            class="hp-value" id="header-periodo-ref"></span></span>
+                                </div>
+                            </div>
+                            <div class="header-right">
+                                <div class="divider-v"></div>
+                            </div>
+                        </header>
+
+                        
+
+                        <section class="card kpis-card">
+                            <div class="kpis">
+                                <div class="kpi">
+                                    <div class="kpi-top"><span class="label">Valor de faturamento</span><span
+                                            class="kpi-badge down" id="kpi-fat-badge"></span></div>
+                                    <div class="value num" id="kpi-fat"></div>
+                                    <div class="sub">vs. <b id="kpi-fat-ref"></b> no período de
+                                        referência</div>
+                                </div>
+                                <div class="kpi">
+                                    <div class="kpi-top"><span class="label">M1 · Valor líquido 1</span></div>
+                                    <div class="value num" id="kpi-m1"></div>
+                                    <div class="sub"><b id="kpi-m1-pct"></b> do faturamento</div>
+                                    <div class="kpi-bar-track">
+                                        <div class="kpi-bar-fill" id="m1-bar"></div>
+                                    </div>
+                                </div>
+                                <div class="kpi">
+                                    <div class="kpi-top"><span class="label">M2 · Valor líquido 2</span></div>
+                                    <div class="value num" id="kpi-m2"></div>
+                                    <div class="sub"><b id="kpi-m2-pct"></b> do faturamento</div>
+                                    <div class="kpi-bar-track">
+                                        <div class="kpi-bar-fill" id="m2-bar"></div>
+                                    </div>
+                                </div>
+                                <div class="kpi">
+                                    <div class="kpi-top"><span class="label">Margem</span><span
+                                            class="kpi-badge up">32,41 %</span></div>
+                                    <div class="value num" id="kpi-margin"></div>
+                                    <div class="sub">sobre M1</div>
+                                    <div class="kpi-bar-track">
+                                        <div class="kpi-bar-fill" id="kpi-margin-bar"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="grid-main">
+                            <section class="card">
+                                <div class="card-head">
+                                    <div>
+                                        <h2>Faturamento por Região</h2>
+                                        <div class="subtitle">Em milhares · <span id="channel-region"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chart-columns-head">
+                                    <span>Região</span><span>Valor</span><span>Variação</span>
+                                </div>
+                                <div class="chart-scroll scroll-area">
+                                    <div class="chart-inner"><canvas id="channel-chart"></canvas></div>
+                                </div>
+                            </section>
+
+                            <section class="card">
+                                <div class="card-head">
+                                    <div>
+                                        <h2>Participação por Região</h2>
+                                        <div class="subtitle">Composição do faturamento do canal</div>
+                                    </div>
+                                </div>
+                                <div class="donut-only">
+                                    <div style="width:100%">
+                                        <div class="share-legend" id="share-legend" aria-label="Filtro por região"></div>
+                                        <div class="donut-wrap">
+                                            <canvas id="share-chart"></canvas>
+                                            <div class="donut-center"><strong id="share-total"></strong><span>faturamento</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <section class="card">
+                            <div class="card-head">
+                                <div>
+                                    <h2>Top Parceiros</h2>
+                                    <div class="subtitle">Em milhares · Top 10 por faturamento · <span
+                                            id="partner-region"></span></div>
+                                </div>
+                            </div>
+                            <div class="partners-scroll scroll-area">
+                                <div class="partners-list" id="partners-list"></div>
+                            </div>
+                            <div class="partners-total" id="partners-total"></div>
+                        </section>
+
+                        <footer class="footer">
+                            <div class="footer-left"><span class="dot"></span><span>Protótipo HTML · dados
+                                    demonstrativos</span></div>
+                            <div class="footer-right"><span>Bela Vista</span><span class="version-tag">drill-down
+                                    v1.0 · canal</span></div>
+                        </footer>
+                    </div>
+
+                    <!-- Bibliotecas externas -->
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+                    <script
+                        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+                    <script>Chart.register(ChartDataLabels);</script>
+
+                    <!--
+  Módulos da aplicação, em ordem de dependência.
+  Cada arquivo é responsável por UMA parte da tela e se auto-executa
+  ao ser carregado — não há um "main.js" central despachando tudo.
+-->
+                    <!-- Lib padronizada: KPI, barras com meta, barras, tabela parceiros -->
+                    <script src="${BASE_FOLDER}/lib/dashboard-components.js"></script>
+<script src="${BASE_FOLDER}/lib/sales-kpis.js"></script>
+<script src="${BASE_FOLDER}/lib/dashboard-filters.js" data-context="channel"></script>
+                    <script src="${BASE_FOLDER}/js6/data.js"></script>
+                    <script src="${BASE_FOLDER}/js6/utils.js"></script>
+                    <script src="${BASE_FOLDER}/js6/canal.js"></script>
+                    <script src="${BASE_FOLDER}/js6/channelChart.js"></script>
+                    <script src="${BASE_FOLDER}/js6/shareChart.js"></script>
+                    <script src="${BASE_FOLDER}/js6/partnersList.js"></script>
+                    <script src="${BASE_FOLDER}/js6/main.js"></script>
+                </body>
+
+                </html>

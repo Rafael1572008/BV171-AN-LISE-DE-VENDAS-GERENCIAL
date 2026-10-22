@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bela Vista · Análise de Faturamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root{
+    --bg:#1e1e1e;
+    --surface:#171717;
+    --surface-alt:#212121;
+    --surface-raised:#262626;
+    --border:#2c2c2c;
+    --border-strong:#3a3a3a;
+    --ink:#eef1f5;
+    --ink-soft:#a7b1c2;
+    --ink-faint:#6d7889;
+    --accent:#3fae87;
+    --accent-line:#4fc499;
+    --accent-soft:#123227;
+    --accent-soft-2:#1c4736;
+    --amber:#d1a367;
+    --negative:#d4796d;
+    --grey-bar:#3c4653;
+    --gold:#c9a961;
+    --silver:#9aa5b3;
+    --bronze:#b9825a;
+    --radius-lg:14px;
+    --radius-md:10px;
+    --radius-sm:6px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+    --shadow-md:0 16px 32px -18px rgba(0,0,0,.6);
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    font-size:14px;
+    line-height:1.5;
+    padding:40px clamp(20px,4.5vw,64px) 72px;
+  }
+  .num, .mono{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+  .wrap{max-width:1400px;margin:0 auto;}
+  a{color:inherit;}
+
+  ::selection{background:var(--accent-soft-2);color:var(--ink);}
+
+  /* ---------- header ---------- */
+  .header{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:24px;
+    padding-bottom:26px;margin-bottom:32px;border-bottom:1px solid var(--border-strong);
+  }
+  .brand{display:flex;align-items:center;gap:13px;}
+  .brand-mark{
+    width:38px;height:38px;border-radius:9px;
+    background:linear-gradient(155deg,var(--accent-line),var(--accent) 70%);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:13px;color:#08130f;letter-spacing:.02em;
+    box-shadow:0 4px 14px -4px rgba(63,174,135,.45);
+  }
+  .brand-text{line-height:1.3;}
+  .brand-name{font-size:14.5px;font-weight:600;color:var(--ink);letter-spacing:-.005em;}
+  .brand-sub{font-size:11px;color:var(--ink-faint);letter-spacing:.02em;}
+
+  .header-center{text-align:center;padding-top:2px;}
+  .eyebrow{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600;margin-bottom:6px;
+  }
+  .eyebrow::before,.eyebrow::after{content:"";width:14px;height:1px;background:var(--border-strong);}
+  .header-center h1{
+    font-weight:600;font-size:20px;letter-spacing:-.01em;color:var(--ink);margin-bottom:9px;
+  }
+  .period-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:11.5px;color:var(--ink-soft);font-weight:500;
+    background:var(--accent-soft);border:1px solid var(--accent-soft-2);
+    border-radius:20px;padding:6px 14px 6px 10px;
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.01em;
+  }
+  .period-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-line);flex-shrink:0;box-shadow:0 0 0 3px rgba(79,196,153,.16);}
+  .period-pill b{color:var(--ink);font-weight:600;}
+
+  .header-right{display:flex;align-items:center;gap:16px;padding-top:2px;}
+  .divider-v{width:1px;height:30px;background:var(--border-strong);}
+  .user-block{display:flex;align-items:center;gap:8px;opacity:.55;transition:opacity .15s var(--ease);}
+  .user-block:hover{opacity:.85;}
+  .user-info{text-align:right;line-height:1.25;}
+  .user-name{font-size:11px;font-weight:500;color:var(--ink-soft);}
+  .user-role{font-size:9.5px;color:var(--ink-faint);letter-spacing:.02em;}
+  .avatar{
+    width:24px;height:24px;border-radius:50%;
+    background:var(--surface-alt);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:600;font-size:9px;color:var(--ink-faint);
+  }
+
+  /* ---------- kpis ---------- */
+  .kpis-card{padding:0;overflow:hidden;margin-bottom:20px;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);}
+  .kpi{
+    padding:22px 26px 24px;
+    display:flex;flex-direction:column;gap:10px;
+    border-right:1px solid var(--border);
+    transition:background .15s var(--ease);
+  }
+  .kpi:hover{background:rgba(255,255,255,.012);}
+  .kpi:last-child{border-right:none;}
+  .kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .kpi .label{font-size:11.5px;color:var(--ink-faint);font-weight:500;letter-spacing:.01em;}
+  .kpi-badge{
+    display:inline-flex;align-items:center;gap:3px;
+    font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:6px;
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.01em;
+  }
+  .kpi-badge.up{color:var(--accent-line);background:rgba(79,196,153,.1);}
+  .kpi-badge.down{color:var(--negative);background:rgba(212,121,109,.1);}
+  .kpi-badge.neutral{color:var(--ink-faint);background:var(--surface-alt);}
+  .kpi .value{font-weight:600;font-size:23px;letter-spacing:-.01em;}
+  .kpi .sub{font-size:11.5px;color:var(--ink-faint);}
+  .kpi .sub b{color:var(--ink-soft);font-weight:600;}
+  .kpi .bar-track{height:3px;border-radius:3px;background:var(--surface-alt);overflow:hidden;margin-top:3px;}
+  .kpi .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-line));border-radius:3px;}
+  .kpi.primary .value{font-size:25px;}
+
+  /* ---------- card shell ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+    padding:24px 26px 22px;box-shadow:var(--shadow-sm);
+  }
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .card-head h2{font-weight:600;font-size:13.5px;letter-spacing:-.005em;color:var(--ink);}
+  .card-head .subtitle{font-size:11px;color:var(--ink-faint);margin-top:3px;}
+  .card-head .tag{font-size:10.5px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;background:var(--surface-alt);border:1px solid var(--border);padding:3px 8px;border-radius:6px;white-space:nowrap;}
+
+  .grid-main{display:grid;grid-template-columns:1.25fr .95fr;gap:20px;margin-bottom:20px;}
+  @media (max-width:960px){
+    .grid-main{grid-template-columns:1fr;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .kpi{border-bottom:1px solid var(--border);}
+    .kpi:nth-child(2n){border-right:none;}
+  }
+
+  /* map */
+  .map-legend{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .map-legend-scale{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;letter-spacing:.02em;}
+  .map-legend-scale .bar{width:96px;height:6px;border-radius:3px;background:linear-gradient(90deg,#242424,var(--accent-soft-2),var(--accent-line));border:1px solid var(--border);}
+  .map-legend-est{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--ink-faint);}
+  .map-legend-est .swatch{width:9px;height:9px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--surface-alt),var(--surface-alt) 2px,#2a333f 2px,#2a333f 4px);border:1px solid var(--border-strong);}
+  #map-wrap{width:100%;display:flex;justify-content:center;}
+  #map-wrap svg{width:100%;height:auto;max-height:410px;}
+  .uf-path{stroke:var(--bg);stroke-width:.6;cursor:pointer;transition:filter .12s var(--ease),stroke-width .12s var(--ease);}
+  .uf-path:hover{filter:brightness(1.3);stroke:var(--ink);stroke-width:1.1;}
+  .map-tooltip{
+    position:absolute;pointer-events:none;z-index:20;
+    background:#0e1420;border:1px solid var(--border-strong);border-radius:9px;
+    padding:10px 13px;box-shadow:var(--shadow-md);
+    font-size:11.5px;color:var(--ink);min-width:150px;
+    opacity:0;transform:translateY(3px);transition:opacity .1s var(--ease),transform .1s var(--ease);
+  }
+  .map-tooltip.visible{opacity:1;transform:translateY(0);}
+  .map-tooltip .tt-title{font-weight:600;font-size:12.5px;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
+  .map-tooltip .tt-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+  .map-tooltip .tt-row{display:flex;justify-content:space-between;gap:16px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 0;}
+  .map-tooltip .tt-row span:last-child{color:var(--ink);font-weight:600;}
+  .map-tooltip .tt-est{margin-top:6px;font-size:9.5px;color:var(--ink-faint);border-top:1px solid var(--border);padding-top:6px;}
+
+  /* ranking */
+  table.rank{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.rank thead th{
+    text-align:left;font-size:10.5px;color:var(--ink-faint);font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;
+    padding:0 6px 10px;border-bottom:1px solid var(--border-strong);
+  }
+  table.rank thead th:last-child,table.rank thead th:nth-child(3){text-align:right;}
+  .rank-scroll{max-height:369px;overflow-y:auto;margin-right:-4px;padding-right:4px;}
+  .rank-scroll::-webkit-scrollbar{width:6px;}
+  .rank-scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
+  .rank-scroll::-webkit-scrollbar-track{background:transparent;}
+  table.rank td{padding:10px 6px;}
+  table.rank tbody tr{border-bottom:1px solid var(--border);transition:background .12s var(--ease);}
+  table.rank tbody tr:hover{background:var(--surface-alt);}
+  table.rank tbody tr.top3{background:linear-gradient(90deg,rgba(63,174,135,.055),transparent 70%);}
+  table.rank tbody tr.top3:hover{background:linear-gradient(90deg,rgba(63,174,135,.09),transparent 70%);}
+  .rank-uf{font-weight:600;display:flex;align-items:center;gap:9px;}
+  .rank-medal{
+    width:18px;height:18px;border-radius:5px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;
+    color:#0b1016;
+  }
+  .rank-medal.m1{background:var(--gold);}
+  .rank-medal.m2{background:var(--silver);}
+  .rank-medal.m3{background:var(--bronze);}
+  .rank-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+  .rank-val{text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);}
+  .rank-pct-cell{display:flex;align-items:center;justify-content:flex-end;gap:8px;}
+  .pct-bar-track{width:46px;height:5px;border-radius:3px;background:var(--surface-alt);overflow:hidden;flex-shrink:0;}
+  .pct-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent-line),var(--accent));}
+  .rank-pct{text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--accent-line);font-weight:600;min-width:50px;}
+  .est-tag{
+    font-size:8.5px;color:var(--ink-faint);background:var(--surface-alt);
+    border:1px solid var(--border);padding:1.5px 5px;border-radius:4px;
+    font-weight:600;letter-spacing:.03em;text-transform:uppercase;vertical-align:1px;
+  }
+  .rank-note{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-faint);margin:12px 2px 0;}
+  .rank-note .est-tag{position:relative;top:-.5px;}
+  table.rank-total{margin-top:2px;}
+  tfoot .total-row td{
+    padding-top:14px;font-weight:700;border-top:1.5px solid var(--border-strong);
+    color:var(--ink);font-size:13px;
+  }
+  tfoot .total-row .rank-val,tfoot .total-row .rank-pct{font-family:'IBM Plex Mono',monospace;color:var(--ink);}
+  tfoot .total-row .rank-pct{color:var(--accent-line);}
+
+  /* channels */
+  .chart-box{position:relative;height:300px;}
+  .legend-row{display:flex;gap:18px;font-size:11px;color:var(--ink-soft);}
+  .legend-row span{display:flex;align-items:center;gap:6px;}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;}
+  .sw-g{background:var(--accent);} .sw-grey{background:var(--grey-bar);} .sw-a{background:var(--amber);border-radius:50%;}
+
+  .footer{
+    margin-top:26px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+    font-size:10.5px;letter-spacing:.02em;color:var(--ink-faint);
+    border-top:1px solid var(--border-strong);padding-top:16px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .footer .footer-left{display:flex;align-items:center;gap:10px;}
+  .footer .footer-left .dot{width:5px;height:5px;border-radius:50%;background:var(--accent-line);}
+  .footer .footer-right{display:flex;align-items:center;gap:14px;}
+  .footer .version-tag{background:var(--surface-alt);border:1px solid var(--border);padding:3px 8px;border-radius:5px;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">BV</div>
+      <div class="brand-text">
+        <div class="brand-name">Bela Vista</div>
+        <div class="brand-sub">Business Intelligence</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="eyebrow">Painel Executivo</div>
+      <h1>Análise de Faturamento</h1>
+    </div>
+    <div class="header-right">
+      <div class="divider-v"></div>
+      <div class="user-block">
+        <div class="user-info">
+          <div class="user-name">Rafa</div>
+          <div class="user-role">BI &amp; Dados</div>
+        </div>
+        <div class="avatar">RS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card kpis-card">
+  <div class="kpis">
+    <div class="kpi primary">
+      <div class="kpi-top"><span class="label">Faturamento</span><span class="kpi-badge up" id="kpi-faturamento-badge"></span></div>
+      <div class="value num" id="kpi-faturamento-valor"></div>
+      <div class="sub">vs. período anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="label">M1 · Valor líquido 1</span><span class="kpi-badge neutral" id="kpi-m1-badge"></span></div>
+      <div class="value num" id="kpi-m1-valor"></div>
+      <div class="sub"><b id="kpi-m1-sub-pct"></b> do faturamento</div>
+      <div class="bar-track"><div class="bar-fill" id="kpi-m1-bar"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="label">M2 · Valor líquido 2</span><span class="kpi-badge neutral" id="kpi-m2-badge"></span></div>
+      <div class="value num" id="kpi-m2-valor"></div>
+      <div class="sub"><b id="kpi-m2-sub-pct"></b> do faturamento</div>
+      <div class="bar-track"><div class="bar-fill" id="kpi-m2-bar"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="label">Margem</span><span class="kpi-badge up" id="kpi-margem-badge"></span></div>
+      <div class="value num" id="kpi-margem-valor"></div>
+      <div class="sub">sobre <b>M1</b></div>
+      <div class="bar-track"><div class="bar-fill" id="kpi-margem-bar"></div></div>
+    </div>
+  </div>
+  </div>
+
+  <div class="grid-main">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Faturamento por estado</h2>
+          <div class="subtitle">Distribuição geográfica da receita, por UF</div>
+        </div>
+        <div class="map-legend">
+          <div class="map-legend-scale">menor <div class="bar"></div> maior</div>
+          <div class="map-legend-est"><span class="swatch"></span>UFs sem detalhamento — valor estimado</div>
+        </div>
+      </div>
+      <div id="map-wrap" style="position:relative;">
+        <svg id="map-svg"></svg>
+        <div class="map-tooltip" id="map-tooltip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Ranking por UF</h2>
+          <div class="subtitle">Participação no faturamento total</div>
+        </div>
+        <div class="tag">27 UFs</div>
+      </div>
+      <div class="rank-scroll">
+        <table class="rank">
+          <thead><tr><th>UF</th><th>Valor</th><th>Part.</th></tr></thead>
+          <tbody id="rank-body"></tbody>
+        </table>
+      </div>
+      <table class="rank rank-total">
+        <tfoot><tr class="total-row"><td>Total geral</td><td class="rank-val" id="rank-total-valor"></td><td class="rank-pct" id="rank-total-pct"></td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2>Faturamento por canal</h2>
+        <div class="subtitle">Comparativo com o período anterior e margem por canal</div>
+      </div>
+      <div class="legend-row">
+        <span><i class="sw sw-g"></i>Atual</span>
+        <span><i class="sw sw-grey"></i>Anterior</span>
+        <span><i class="sw sw-a"></i>Margem %</span>
+      </div>
+    </div>
+    <div class="chart-box"><canvas id="chan-chart"></canvas></div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left"><span class="dot"></span><span id="footer-updated">Atualizado em —</span></div>
+    <div class="footer-right">
+      <span>Bela Vista</span>
+      <span class="version-tag">v2.1</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------- dados (inalterados) ----------------
+const ufData = [
+  {sigla:"SP", nome:"São Paulo", valor:7199345.56, pct:49.91},
+  {sigla:"ES", nome:"Espírito Santo", valor:913516.70, pct:6.33},
+  {sigla:"RJ", nome:"Rio de Janeiro", valor:789753.30, pct:5.48},
+  {sigla:"MT", nome:"Mato Grosso", valor:739148.38, pct:5.12},
+  {sigla:"SC", nome:"Santa Catarina", valor:725090.12, pct:5.03},
+  {sigla:"PR", nome:"Paraná", valor:713000.33, pct:4.94},
+  {sigla:"RS", nome:"Rio Grande do Sul", valor:637899.74, pct:4.42},
+  {sigla:"BA", nome:"Bahia", valor:625395.00, pct:4.34},
+];
+const totalGeral = 14423641.45;
+
+// dados arbitrários (ilustrativos) para as demais UFs, só para completar o mapa
+const outrosUF = {
+  MG:3.00, GO:1.90, DF:1.60, PE:1.30, CE:1.00, PA:0.90, AM:0.80, MS:0.70,
+  RN:0.50, PB:0.40, AL:0.32, SE:0.28, PI:0.25, MA:0.22, TO:0.18, RO:0.15,
+  AC:0.10, RR:0.07, AP:0.06
+};
+
+const valorPorUF = Object.fromEntries(ufData.map(d=>[d.sigla,d.pct]));
+Object.entries(outrosUF).forEach(([sigla,pct])=>{ valorPorUF[sigla]=pct; });
+
+const fmtBRL = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:2});
+const fmtPct = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%';
+
+// escala verde-corporativo por percentual
+function greenForPct(pct){
+  const t = Math.min(pct/50,1);
+  const scale = d3.interpolateRgb("#1c4736", "#4fc499");
+  return scale(Math.pow(t,0.55));
+}
+
+// ---------------- rodapé: data de atualização ----------------
+document.getElementById('footer-updated').textContent =
+  'Atualizado em ' + new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) +
+  ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+// ---------------- tabela ranking (todas as UFs) ----------------
+const rankBody = document.getElementById('rank-body');
+
+const nomesUF = {
+  MG:"Minas Gerais", GO:"Goiás", DF:"Distrito Federal", PE:"Pernambuco", CE:"Ceará",
+  PA:"Pará", AM:"Amazonas", MS:"Mato Grosso do Sul", RN:"Rio Grande do Norte",
+  PB:"Paraíba", AL:"Alagoas", SE:"Sergipe", PI:"Piauí", MA:"Maranhão",
+  TO:"Tocantins", RO:"Rondônia", AC:"Acre", RR:"Roraima", AP:"Amapá"
+};
+
+const outrosLista = Object.entries(outrosUF).map(([sigla,pct])=>({
+  sigla, nome:nomesUF[sigla], pct, valor: totalGeral*pct/100, estimado:true
+}));
+
+const listaCompleta = [...ufData.map(d=>({...d,estimado:false})), ...outrosLista]
+  .sort((a,b)=>b.pct-a.pct);
+
+const maxPct = listaCompleta[0].pct;
+const medalhas = ['m1','m2','m3'];
+
+listaCompleta.forEach((d,i)=>{
+  const tr = document.createElement('tr');
+  if(i<3) tr.classList.add('top3');
+  const barWidth = Math.max((d.pct/maxPct*100), 3).toFixed(1);
+  const marker = i<3
+    ? `<span class="rank-medal ${medalhas[i]}">${i+1}</span>`
+    : `<span class="rank-dot" style="background:${greenForPct(d.pct)}"></span>`;
+  tr.innerHTML = `
+    <td class="rank-uf">${marker}${d.sigla}</td>
+    <td class="rank-val">${fmtBRL(d.valor)}</td>
+    <td><div class="rank-pct-cell"><div class="pct-bar-track"><div class="pct-bar-fill" style="width:${barWidth}%"></div></div><span class="rank-pct">${fmtPct(d.pct)}</span></div></td>`;
+  rankBody.appendChild(tr);
+});
+
+// ---------------- mapa coroplético ----------------
+const svg = d3.select("#map-svg").attr("viewBox","0 0 520 480");
+const tooltipEl = document.getElementById('map-tooltip');
+const mapWrap = document.getElementById('map-wrap');
+
+fetch("https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson")
+  .then(r=>r.json())
+  .then(geo=>{
+    const projection = d3.geoMercator().fitSize([520,470], geo);
+    const path = d3.geoPath().projection(projection);
+    svg.selectAll("path")
+      .data(geo.features)
+      .join("path")
+      .attr("class","uf-path")
+      .attr("d", path)
+      .attr("fill", f=>{
+        const sigla = f.properties.sigla;
+        const pct = valorPorUF[sigla];
+        return pct ? greenForPct(pct) : "#242424";
+      })
+      .on("mousemove", (event,f)=>{
+        const sigla = f.properties.sigla;
+        const pct = valorPorUF[sigla];
+        const rec = listaCompleta.find(d=>d.sigla===sigla);
+        const rect = mapWrap.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        if(!pct){
+          tooltipEl.innerHTML = `<div class="tt-title">${f.properties.name}</div><div class="tt-row"><span>Sem faturamento registrado</span></div>`;
+        } else {
+          tooltipEl.innerHTML = `
+            <div class="tt-title"><span class="tt-dot" style="background:${greenForPct(pct)}"></span>${f.properties.name}</div>
+            <div class="tt-row"><span>Faturamento</span><span>${fmtBRL(rec.valor)}</span></div>
+            <div class="tt-row"><span>Participação</span><span>${fmtPct(pct)}</span></div>
+            ${rec.estimado ? '<div class="tt-est">Valor estimado a partir da participação percentual</div>' : ''}
+          `;
+        }
+        tooltipEl.style.left = Math.min(x+14, rect.width-190) + 'px';
+        tooltipEl.style.top = Math.max(y-10, 0) + 'px';
+        tooltipEl.classList.add('visible');
+      })
+      .on("mouseleave", ()=> tooltipEl.classList.remove('visible'));
+  })
+  .catch(()=>{
+    mapWrap.innerHTML =
+      '<p style="color:var(--ink-faint);font-size:13px;padding:40px 0;">Não foi possível carregar o mapa (sem conexão com o GeoJSON externo).</p>';
+  });
+
+// ---------------- gráfico de canais (Chart.js) ----------------
+Chart.register(ChartDataLabels);
+const ctx = document.getElementById('chan-chart');
+new Chart(ctx, {
+  data: {
+    labels: ['Atacado','Distribuição','Cash & Carry','Varejo','Exportação','Total'],
+    datasets: [
+      {
+        type:'bar', label:'Atual',
+        data:[5552.5,4303.3,2894.1,1265.1,407.3,14423.7],
+        backgroundColor:'#3fae87', borderRadius:4, maxBarThickness:30,
+        yAxisID:'y',
+        datalabels:{
+          display: ctx => ctx.dataset.data[ctx.dataIndex] >= 900,
+          anchor:'end', align:'top', color:'#8b96a8', font:{size:9.5, family:"'IBM Plex Mono',monospace"}, offset:3,
+          formatter:v=>v.toLocaleString('pt-BR',{maximumFractionDigits:0})
+        }
+      },
+      {
+        type:'bar', label:'Anterior',
+        data:[4729.0,3029.6,4180.9,842.2,335.3,13117.9],
+        backgroundColor:'#3c4653', borderRadius:4, maxBarThickness:30,
+        yAxisID:'y',
+        datalabels:{ display:false }
+      },
+      {
+        type:'line', label:'Margem %',
+        data:[17.4,42.0,-30.8,50.2,21.5,10.0],
+        borderColor:'#d1a367', backgroundColor:'#d1a367',
+        pointRadius:4, pointHoverRadius:6, pointBackgroundColor:'#d1a367',
+        pointBorderColor:'#0b1016', pointBorderWidth:1.5,
+        tension:.35, borderWidth:2,
+        yAxisID:'y1',
+        datalabels:{
+          color:'#d1a367', font:{size:10, weight:'600', family:"'IBM Plex Mono',monospace"}, align:'top', offset:9,
+          formatter:v => (v>0?'+':'') + v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%'
+        }
+      }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    layout:{padding:{top:12}},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#0e1420', borderColor:'rgba(255,255,255,.09)', borderWidth:1,
+        titleColor:'#ffffff', bodyColor:'#c7cedb', padding:12, cornerRadius:8,
+        titleFont:{family:"'IBM Plex Sans',sans-serif", weight:'600', size:12.5},
+        bodyFont:{family:"'IBM Plex Mono',monospace", size:11.5},
+        boxPadding:5,
+        callbacks:{
+          label: c => c.dataset.yAxisID==='y1'
+            ? `Margem: ${c.raw>0?'+':''}${c.raw.toLocaleString('pt-BR')}%`
+            : `${c.dataset.label}: ${fmtBRL(c.raw*1000)}`
+        }
+      }
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:'#a7b1c2', font:{size:11.5, family:"'IBM Plex Sans',sans-serif"}} },
+      y:{ position:'left', grid:{color:'#242e3a'}, border:{display:false}, ticks:{color:'#6d7889', font:{size:10.5, family:"'IBM Plex Mono',monospace"}, callback:v=>v.toLocaleString('pt-BR')} },
+      y1:{ position:'right', grid:{display:false}, border:{display:false}, ticks:{color:'#d1a367', font:{size:10.5, family:"'IBM Plex Mono',monospace"}, callback:v=>v+'%'} }
+    }
+  }
+});
+</script>
+</body>
+</html>
